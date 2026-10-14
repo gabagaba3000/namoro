@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Simulador de Namoro à Distância - WhatsApp</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #d1d7db;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Fundo Padrão Clássico do WhatsApp */
+        .wa-bg {
+            background-color: #efeae2;
+            background-image: radial-gradient(#000000 0.5px, transparent 0.5px), radial-gradient(#000000 0.5px, #efeae2 0.5px);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+            background-opacity: 0.05;
+        }
+
+        /* Sombra do balão de mensagem */
+        .bubble-shadow {
+            box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+        }
+
+        /* Triangular tails for bubbles */
+        .bubble-in::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -8px;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 10px 10px 0;
+            border-color: transparent #ffffff transparent transparent;
+        }
+
+        .bubble-out::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: -8px;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 0 0 10px 10px;
+            border-color: transparent transparent transparent #dcf8c6;
+        }
+
+        /* Animação suave para mensagens */
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.96) translateY(6px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .msg-anim {
+            animation: popIn 0.2s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+        }
+
+        /* Indicador de digitando com 3 pontinhos */
+        .typing-dot {
+            animation: typingBounce 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typingBounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex justify-center items-center overflow-hidden">
+
+    <!-- OVERLAY: Seleção de Personagem (Início) -->
+    <div id="character-select-screen" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl flex flex-col items-center text-center space-y-6">
+            <div class="w-16 h-16 rounded-full bg-emerald-100 text-[#075E54] flex items-center justify-center text-3xl shadow-inner">
+                <i class="fa-solid fa-[#fa-comments] fa-comments"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Amor à Distância 💌</h1>
+                <p class="text-sm text-gray-500 mt-1">Escolha com quem você deseja namorar neste simulador:</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 w-full">
+                <!-- Opção 1: Lia -->
+                <button onclick="selectPartner('lia')" class="flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl hover:border-[#075E54] hover:bg-emerald-50 transition group">
+                    <img src="https://api.dicebear.com/7.x/bottts-neutral/svg?seed=LiaAesthetics&backgroundColor=b6e3f4" alt="Lia 2D Avatar" class="w-20 h-20 rounded-full bg-pink-100 p-1 mb-2 border-2 border-pink-300 group-hover:scale-105 transition">
+                    <span class="font-bold text-gray-800 group-hover:text-[#075E54]">Lia 🌸</span>
+                    <span class="text-xs text-gray-500">20 anos • Ilustradora</span>
+                </button>
+
+                <!-- Opção 2: Alex -->
+                <button onclick="selectPartner('alex')" class="flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl hover:border-[#075E54] hover:bg-emerald-50 transition group">
+                    <img src="https://api.dicebear.com/7.x/bottts-neutral/svg?seed=AlexGaming&backgroundColor=c0aede" alt="Alex 2D Avatar" class="w-20 h-20 rounded-full bg-blue-100 p-1 mb-2 border-2 border-blue-300 group-hover:scale-105 transition">
+                    <span class="font-bold text-gray-800 group-hover:text-[#075E54]">Alex 🎮</span>
+                    <span class="text-xs text-gray-500">21 anos • Dev & Gamer</span>
+                </button>
+            </div>
+
+            <div class="text-xs text-gray-400 border-t pt-3 w-full">
+                Suas escolhas afetam o medidor de amor e determinam o final da história!
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP CONTAINER (WhatsApp Interface) -->
+    <div id="app-container" class="w-full h-full sm:max-w-[440px] sm:h-[92vh] sm:rounded-2xl shadow-2xl flex flex-col bg-[#efeae2] overflow-hidden relative border border-gray-300">
+
+        <!-- WHATSAPP HEADER -->
+        <header class="bg-[#075E54] text-white px-3 py-2.5 flex items-center justify-between shadow-md z-30 shrink-0 select-none">
+            <div class="flex items-center space-x-2 cursor-pointer">
+                <i class="fa-solid fa-arrow-left text-lg pr-1"></i>
+                <div class="relative">
+                    <img id="header-avatar" src="" alt="Parceiro(a)" class="w-10 h-10 rounded-full object-cover bg-white p-0.5 border border-emerald-300">
+                    <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#075E54] rounded-full"></span>
+                </div>
+                <div class="flex flex-col">
+                    <h2 id="header-name" class="font-semibold text-base leading-tight">Carregando...</h2>
+                    <span id="header-status" class="text-xs text-emerald-100 opacity-90 font-light">online</span>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4 text-white text-lg">
+                <button onclick="startVideoCall()" title="Chamada de Vídeo" class="hover:text-emerald-200 active:scale-95 transition"><i class="fa-solid fa-video"></i></button>
+                <button onclick="startAudioCall()" title="Chamada de Voz" class="hover:text-emerald-200 active:scale-95 transition"><i class="fa-solid fa-phone"></i></button>
+                <button onclick="toggleLoveMeter()" title="Medidor de Amor" class="hover:text-emerald-200 active:scale-95 transition relative">
+                    <i class="fa-solid fa-heart text-rose-300"></i>
+                    <span id="heart-pulse-badge" class="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping"></span>
+                </button>
+            </div>
+        </header>
+
+        <!-- BARRA DE AFETO / LOVE METER (Expansível / Fixo) -->
+        <div id="love-meter-bar" class="bg-[#128C7E] text-white px-4 py-2 border-b border-emerald-800 flex items-center justify-between text-xs shadow-inner z-20 shrink-0">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-heart text-rose-300 text-sm animate-pulse"></i>
+                <span class="font-semibold tracking-wide">Nível de Amor:</span>
+                <span id="love-percentage" class="font-bold text-yellow-300 text-sm">50%</span>
+            </div>
+            <div class="w-32 bg-emerald-900/60 rounded-full h-2.5 p-0.5 border border-emerald-500/30 overflow-hidden">
+                <div id="love-progress" class="bg-gradient-to-r from-yellow-400 to-rose-500 h-full rounded-full transition-all duration-500 shadow" style="width: 50%;"></div>
+            </div>
+        </div>
+
+        <!-- BARRA DE CAPÍTULO / DIA -->
+        <div class="bg-[#e2dacd] px-3 py-1 flex items-center justify-between text-[11px] text-gray-600 font-medium border-b border-gray-300 shrink-0">
+            <span id="current-chapter-title"><i class="fa-regular fa-calendar-days mr-1"></i> Dia 1: O Início</span>
+            <span class="bg-emerald-700/10 text-[#075E54] px-2 py-0.5 rounded-full font-bold" id="chapter-tag">Capítulo 1</span>
+        </div>
+
+        <!-- ÁREA DE MENSAGENS (CHAT) -->
+        <div id="chat-messages" class="wa-bg flex-1 overflow-y-auto p-3 flex flex-col space-y-2.5">
+            <!-- Mensagens são inseridas dinamicamente -->
+        </div>
+
+        <!-- INDICADOR DE DIGITANDO -->
+        <div id="typing-indicator" class="hidden px-4 py-1.5 bg-transparent shrink-0">
+            <div class="flex items-center space-x-2 bg-white/90 backdrop-blur w-max px-3 py-1.5 rounded-full shadow-sm text-xs text-gray-600 border border-gray-200">
+                <span class="font-semibold text-[#075E54]" id="typing-partner-name">Lia</span>
+                <span>está digitando</span>
+                <div class="flex space-x-1 items-center ml-1">
+                    <div class="w-1.5 h-1.5 bg-gray-500 rounded-full typing-dot"></div>
+                    <div class="w-1.5 h-1.5 bg-gray-500 rounded-full typing-dot"></div>
+                    <div class="w-1.5 h-1.5 bg-gray-500 rounded-full typing-dot"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAINEL DE RESPOSTAS / ESCOLHAS DA HISTÓRIA -->
+        <div id="choices-container" class="bg-[#f0f2f5] border-t border-gray-300 p-3 shrink-0 flex flex-col space-y-2 z-20">
+            <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider px-1 flex items-center justify-between">
+                <span><i class="fa-regular fa-comment-dots mr-1"></i> Escolha como responder:</span>
+            </div>
+            <div id="choices-list" class="flex flex-col space-y-2">
+                <!-- Botões gerados por JS -->
+            </div>
+        </div>
+
+        <!-- BARRA INFERIOR DE INPUT DE TEXTO (ESTÉTICA WHATSAPP) -->
+        <div class="bg-[#f0f2f5] px-3 py-2 flex items-center space-x-2 border-t border-gray-200 shrink-0 text-gray-500">
+            <i class="fa-regular fa-face-smile text-xl cursor-pointer hover:text-gray-700"></i>
+            <i class="fa-solid fa-paperclip text-xl cursor-pointer hover:text-gray-700"></i>
+            <div class="flex-1 bg-white rounded-lg px-3 py-1.5 text-xs text-gray-400 select-none border border-gray-200 shadow-inner truncate">
+                Selecione uma opção acima...
+            </div>
+            <div class="w-8 h-8 rounded-full bg-[#075E54] text-white flex items-center justify-center text-sm shadow">
+                <i class="fa-solid fa-microphone"></i>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MODAL DE CHAMADA SIMULADA (VÍDEO / ÁUDIO) -->
+    <div id="call-modal" class="fixed inset-0 bg-slate-950 z-50 hidden flex flex-col items-center justify-between py-10 px-6 text-white">
+        <div class="flex flex-col items-center space-y-2 mt-4">
+            <span id="call-type-label" class="text-xs uppercase tracking-widest text-emerald-400 font-bold">Chamada de Vídeo WhatsApp</span>
+            <h2 id="call-partner-name" class="text-2xl font-bold">Lia 🌸</h2>
+            <p id="call-status-timer" class="text-sm text-gray-300 font-mono">Chamando...</p>
+        </div>
+
+        <!-- Tela de Câmera 2D -->
+        <div class="relative w-56 h-72 sm:w-64 sm:h-80 rounded-2xl overflow-hidden shadow-2xl border-2 border-emerald-500/40 bg-slate-900 flex items-center justify-center">
+            <img id="call-avatar-img" src="" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20"></div>
+            
+            <!-- Live Badge -->
+            <div class="absolute top-3 left-3 bg-black/60 backdrop-blur px-2.5 py-1 rounded-full text-[10px] flex items-center space-x-1.5 border border-white/10">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="font-semibold text-emerald-300">HD 720p</span>
+            </div>
+
+            <!-- Legenda da chamada -->
+            <p id="call-subtitles" class="absolute bottom-4 left-3 right-3 text-center text-xs text-white/90 bg-black/60 backdrop-blur p-2 rounded-lg border border-white/10 italic">
+                "Saudades de você..."
+            </p>
+        </div>
+
+        <!-- Botões da Chamada -->
+        <div class="flex items-center space-x-6 mb-4">
+            <button onclick="toggleCallMute()" id="mute-btn" class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-lg hover:bg-slate-700 transition border border-white/10">
+                <i class="fa-solid fa-microphone-slash"></i>
+            </button>
+            <button onclick="endCall()" class="w-16 h-16 rounded-full bg-rose-600 text-white flex items-center justify-center text-2xl hover:bg-rose-500 shadow-xl transition active:scale-95">
+                <i class="fa-solid fa-phone-slash"></i>
+            </button>
+            <button onclick="toggleCallCam()" id="cam-btn" class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-lg hover:bg-slate-700 transition border border-white/10">
+                <i class="fa-solid fa-video-slash"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL DE FINAL DO JOGO -->
+    <div id="ending-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-2xl flex flex-col items-center text-center space-y-4 border border-gray-100">
+            <div id="ending-badge" class="w-20 h-20 rounded-full bg-rose-100 text-rose-500 flex items-center justify-center text-4xl shadow-inner">
+                <i id="ending-icon" class="fa-solid fa-heart text-rose-500"></i>
+            </div>
+            
+            <h2 id="ending-title" class="text-2xl font-bold text-gray-800">Final Romântico Perfeito!</h2>
+            <p id="ending-desc" class="text-xs text-gray-600 leading-relaxed">
+                Vocês superaram a distância, os fuso horários e os medos. Hoje vocês se encontraram no aeroporto para viver esse amor bem de perto!
+            </p>
+
+            <div class="w-full bg-gray-50 p-3 rounded-xl border border-gray-200 text-xs text-gray-600 flex justify-around">
+                <div>Amor Final: <span id="ending-love-score" class="font-bold text-emerald-600">95%</span></div>
+                <div>Status: <span id="ending-status" class="font-bold text-gray-800">Juntos Forever</span></div>
+            </div>
+
+            <button onclick="restartGame()" class="w-full bg-[#075E54] text-white py-3 rounded-xl font-bold hover:bg-[#05443d] transition shadow-lg active:scale-98 text-sm">
+                <i class="fa-solid fa-rotate-right mr-1"></i> Jogar Novamente
+            </button>
+        </div>
+    </div>
+
+    <!-- SCRIPT DE LÓGICA COMPLETA DO SIMULADOR -->
+    <script>
+        // CONFIGURAÇÕES DOS PERSONAGENS (2D Ilustrados)
+        const PARTNERS = {
+            lia: {
+                name: "Lia 🌸",
+                avatar: "https://api.dicebear.com/7.x/bottts-neutral/svg?seed=LiaAesthetics&backgroundColor=b6e3f4",
+                callAvatar: "https://api.dicebear.com/7.x/bottts-neutral/svg?seed=LiaAesthetics&backgroundColor=b6e3f4",
+                photoUrl: "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=500&auto=format&fit=crop&q=80" // Arte/Desenho 2D
+            },
+            alex: {
+                name: "Alex 🎮",
+                avatar: "https://api.dicebear.com/7.x/bottts-neutral/svg?seed=AlexGaming&backgroundColor=c0aede",
+                callAvatar: "https://api.dicebear.com/7.x/bottts-neutral/svg?seed=AlexGaming&backgroundColor=c0aede",
+                photoUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&auto=format&fit=crop&q=80" // Arte abstrata 2D
+            }
+        };
+
+        // ESTADO GLOBAL DO JOGO
+        let state = {
+            partnerKey: 'lia',
+            love: 50,
+            currentStep: 'day1_start'
+        };
+
+        // ARVORE NARRATIVA DO JOGO (HISTÓRIA EM DIAS & CAPÍTULOS)
+        const storyTree = {
+            // --- CAPÍTULO 1: DIA 1 (O Bom Dia de Longe) ---
+            'day1_start': {
+                chapter: "Dia 1: Bom dia de longe",
+                messages: [
+                    { sender: 'partner', text: "Bom dia, amor! ❤️ Já acordou por aí?" },
+                    { sender: 'partner', text: "Estava vendo as fotos da semana passada e bateu uma saudade enorme de você..." }
+                ],
+                choices: [
+                    { text: "Bom dia, meu amor! Também acabei de acordar pensando em você. 💕", loveDelta: +10, next: 'day1_sweet' },
+                    { text: "Oi! Acordei agora, tô na correria pra me arrumar pro trabalho/estudo.", loveDelta: 0, next: 'day1_busy' },
+                    { text: "Pois é, né... pena que a gente mora tão longe um do outro.", loveDelta: -10, next: 'day1_sad' }
+                ]
+            },
+
+            'day1_sweet': {
+                messages: [
+                    { sender: 'user', text: "Bom dia, meu amor! Também acabei de acordar pensando em você. 💕" },
+                    { sender: 'partner', text: "Awwn, que lindo! Seu bom dia sempre muda meu astral! 🥰" },
+                    { sender: 'partner', text: "Eu fiz esse desenho rápido de manhã pensando na gente. O que achou?", type: 'image', mediaUrl: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=400&auto=format&fit=crop&q=80', caption: 'Arte do dia 🎨' }
+                ],
+                choices: [
+                    { text: "Ficou perfeito! Você é incrível demais nas artes!", loveDelta: +10, next: 'day15_start' },
+                    { text: "Ficou bonitinho! Que talento fofo.", loveDelta: +5, next: 'day15_start' }
+                ]
+            },
+
+            'day1_busy': {
+                messages: [
+                    { sender: 'user', text: "Oi! Acordei agora, tô na correria pra me arrumar pro trabalho/estudo." },
+                    { sender: 'partner', text: "Entendi! Bom trabalho por aí então, me avisa quando tiver uma pausa, tá?" }
+                ],
+                choices: [
+                    { text: "Pode deixar! Te mando mensagem na hora do almoço. Beijos!", loveDelta: +5, next: 'day15_start' },
+                    { text: "Tá bom, se der eu aviso.", loveDelta: -5, next: 'day15_start' }
+                ]
+            },
+
+            'day1_sad': {
+                messages: [
+                    { sender: 'user', text: "Pois é, né... pena que a gente mora tão longe um do outro." },
+                    { sender: 'partner', text: "Poxa... nem me fala 🙁 Às vezes parece bem difícil aguentar essa distância toda." }
+                ],
+                choices: [
+                    { text: "Mas a gente vai conseguir passar por isso juntos, confia!", loveDelta: +10, next: 'day15_start' },
+                    { text: "É a realidade, fazer o quê...", loveDelta: -10, next: 'day15_start' }
+                ]
+            },
+
+            // --- CAPÍTULO 2: DIA 15 (Saudades & Rotina) ---
+            'day15_start': {
+                chapter: "Dia 15: Mídia & Saudades",
+                messages: [
+                    { sender: 'system', text: "📅 14 dias se passaram..." },
+                    { sender: 'partner', text: "Sabe o que eu queria muito agora?" },
+                    { sender: 'partner', text: "Áudio simulado (0:15)", type: 'audio', duration: '0:15' },
+                    { sender: 'partner', text: "Queria que você estivesse aqui pra gente assistir um filme agarradinhos." }
+                ],
+                choices: [
+                    { text: "Eu topo! Que tal colocarmos o mesmo filme juntos no streaming agora?", loveDelta: +15, next: 'day15_movie' },
+                    { text: "Infelizmente hoje tô exausto(a), amanhã a gente se fala mais...", loveDelta: -10, next: 'day15_tired' }
+                ]
+            },
+
+            'day15_movie': {
+                messages: [
+                    { sender: 'user', text: "Eu topo! Que tal colocarmos o mesmo filme juntos no streaming agora?" },
+                    { sender: 'partner', text: "AMOOOO! Você é o(a) melhor namorado(a) do mundo! 🍿🎬" },
+                    { sender: 'partner', text: "Vou ligar a câmera rapidinho pra ver sua reação!" }
+                ],
+                choices: [
+                    { text: "Fazer Chamada de Vídeo agora! 📹", loveDelta: +15, triggerCall: true, next: 'day30_start' }
+                ]
+            },
+
+            'day15_tired': {
+                messages: [
+                    { sender: 'user', text: "Infelizmente hoje tô exausto(a), amanhã a gente se fala mais..." },
+                    { sender: 'partner', text: "Ah... poxa. Entendi. Boa noite então. 😔" }
+                ],
+                choices: [
+                    { text: "Ei, me desculpa. Amanhã faço uma surpresa pra você, tá? Te amo.", loveDelta: +5, next: 'day30_start' },
+                    { text: "Boa noite.", loveDelta: -10, next: 'day30_start' }
+                ]
+            },
+
+            // --- CAPÍTULO 3: DIA 30 (Ciúmes e Dúvidas) ---
+            'day30_start': {
+                chapter: "Dia 30: O Teste de Confiança",
+                messages: [
+                    { sender: 'system', text: "📅 15 dias depois..." },
+                    { sender: 'partner', text: "Ei... precisamos conversar sério." },
+                    { sender: 'partner', text: "Vi um comentário no seu post de alguém te chamando de 'lindo(a)'... Fiquei meio inseguro(a)." }
+                ],
+                choices: [
+                    { text: "Relaxa amor, é só um(a) amigo(a) antigo(a). Eu só tenho olhos para você!", loveDelta: +15, next: 'day30_reassure' },
+                    { text: "Nossa, nada a ver! Você vai controlar até meus comentários agora?", loveDelta: -20, next: 'day30_fight' },
+                    { text: "Não se preocupa meu bem, você é a única pessoa na minha vida.", loveDelta: +10, next: 'day30_reassure' }
+                ]
+            },
+
+            'day30_reassure': {
+                messages: [
+                    { sender: 'user', text: "Relaxa amor, é só um(a) amigo(a) antigo(a). Eu só tenho olhos para você!" },
+                    { sender: 'partner', text: "Obrigado(a) por me tranquilizar. A distância às vezes faz a mente inventar caraminholas... 🥺❤️" },
+                    { sender: 'partner', text: "Sabe de uma coisa? Chega de esperar." }
+                ],
+                choices: [
+                    { text: "O que você quer dizer com isso? 🤔", loveDelta: +5, next: 'day60_start' }
+                ]
+            },
+
+            'day30_fight': {
+                messages: [
+                    { sender: 'user', text: "Nossa, nada a ver! Você vai controlar até meus comentários agora?" },
+                    { sender: 'partner', text: "Não precisa falar assim comigo... Eu só queria carinho e atenção." },
+                    { sender: 'partner', text: "Fico pensando se esse namoro de longe realmente vai dar certo..." }
+                ],
+                choices: [
+                    { text: "Me desculpa, fui rude. Eu tô estressado(a), mas eu te amo muito!", loveDelta: +5, next: 'day60_start' },
+                    { text: "Se acha que não vai dar certo, você que sabe.", loveDelta: -25, next: 'day60_start' }
+                ]
+            },
+
+            // --- CAPÍTULO 4: DIA 60 (A Viagem / Encontro) ---
+            'day60_start': {
+                chapter: "Dia 60: A Grande Decisão",
+                messages: [
+                    { sender: 'system', text: "✈️ Dia do Grande Planejamento" },
+                    { sender: 'partner', text: "Olha só o que eu acabei de comprar..." },
+                    { sender: 'partner', text: "Passagem Aérea Comprada! ✈️🎫", type: 'image', mediaUrl: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=500&auto=format&fit=crop&q=80', caption: 'Chego aí sexta-feira às 14h!' }
+                ],
+                choices: [
+                    { text: "NÃO ACREDITO!! VOU TE ESPERAR NO AEROPORTO COM FLORES!! 😭💖", loveDelta: +25, next: 'check_ending' },
+                    { text: "Uau, que surpresa boa! Finalmente vamos nos abraçar!", loveDelta: +15, next: 'check_ending' },
+                    { text: "Nossa, você devia ter me avisado antes... minha rotina tá cheia.", loveDelta: -30, next: 'check_ending' }
+                ]
+            }
+        };
+
+        // FINAIS DO JOGO
+        const ENDINGS = {
+            perfect: {
+                title: "Final Romântico Perfeito! 💍✨",
+                desc: "Vocês se encontraram no aeroporto com um abraço emocionante! A distância só fortaleceu o amor de vocês e agora planejam morar na mesma cidade.",
+                icon: "fa-solid fa-heart-circle-check",
+                status: "Juntos Para Sempre",
+                color: "text-rose-500",
+                bg: "bg-rose-100"
+            },
+            friends: {
+                title: "Final: Amizade Carinhosa 🤝",
+                desc: "Vocês se encontraram e viram que a conexão era especial, mas preferiram continuar apenas como ótimos amigos devido aos objetivos de vida.",
+                icon: "fa-solid fa-handshake-angle",
+                status: "Bons Amigos",
+                color: "text-amber-500",
+                bg: "bg-amber-100"
+            },
+            breakup: {
+                title: "Final: Término & Afastamento 💔",
+                desc: "As brigas, desconfianças e o esfriamento do diálogo tornaram a distância insuportável. O namoro chegou ao fim.",
+                icon: "fa-solid fa-heart-crack",
+                status: "Terminaram",
+                color: "text-gray-600",
+                bg: "bg-gray-200"
+            }
+        };
+
+        // INICIAR JOGO / SELECIONAR PAR
+        function selectPartner(key) {
+            state.partnerKey = key;
+            const p = PARTNERS[key];
+
+            document.getElementById('header-avatar').src = p.avatar;
+            document.getElementById('header-name').innerText = p.name;
+            document.getElementById('typing-partner-name').innerText = p.name.split(' ')[0];
+
+            document.getElementById('character-select-screen').classList.add('hidden');
+            
+            initGame();
+        }
+
+        function initGame() {
+            state.love = 50;
+            state.currentStep = 'day1_start';
+            document.getElementById('chat-messages').innerHTML = '';
+            updateLoveUI();
+            renderStep('day1_start');
+        }
+
+        // ATUALIZA INTERFACE DO MEDIDOR DE AMOR
+        function updateLoveUI() {
+            const percentage = Math.max(0, Math.min(100, state.love));
+            document.getElementById('love-percentage').innerText = `${percentage}%`;
+            document.getElementById('love-progress').style.width = `${percentage}%`;
+        }
+
+        // RENDERIZA UM PASSO DA HISTÓRIA
+        function renderStep(stepKey) {
+            if (stepKey === 'check_ending') {
+                triggerFinalEnding();
+                return;
+            }
+
+            const step = storyTree[stepKey];
+            if (!step) return;
+
+            state.currentStep = stepKey;
+
+            // Atualiza Capítulo
+            if (step.chapter) {
+                document.getElementById('current-chapter-title').innerHTML = `<i class="fa-regular fa-calendar-days mr-1"></i> ${step.chapter}`;
+            }
+
+            // Oculta escolhas temporariamente
+            const choicesContainer = document.getElementById('choices-container');
+            const choicesList = document.getElementById('choices-list');
+            choicesList.innerHTML = '';
+            choicesContainer.style.display = 'none';
+
+            // Processa sequência de mensagens com animação de "digitando..."
+            let msgIdx = 0;
+
+            function showNextMessage() {
+                if (msgIdx < step.messages.length) {
+                    const msg = step.messages[msgIdx];
+
+                    if (msg.sender === 'partner') {
+                        // Exibe indicador de digitando
+                        setTyping(true);
+                        setTimeout(() => {
+                            setTyping(false);
+                            appendMessage(msg);
+                            msgIdx++;
+                            showNextMessage();
+                        }, 1200);
+                    } else {
+                        appendMessage(msg);
+                        msgIdx++;
+                        showNextMessage();
+                    }
+                } else {
+                    // Após renderizar todas as mensagens, exibe as opções do jogador
+                    renderChoices(step.choices);
+                }
+            }
+
+            showNextMessage();
+        }
+
+        // ADICIONA MENSAGEM NA TELA DO WHATSAPP
+        function appendMessage(msg) {
+            const chat = document.getElementById('chat-messages');
+            const p = PARTNERS[state.partnerKey];
+
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+            const isUser = msg.sender === 'user';
+            const isSystem = msg.sender === 'system';
+
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex msg-anim my-1 ${isSystem ? 'justify-center' : (isUser ? 'justify-end' : 'justify-start')}`;
+
+            if (isSystem) {
+                wrapper.innerHTML = `
+                    <div class="bg-amber-100/90 text-amber-900 text-[11px] font-semibold px-3 py-1 rounded-lg shadow-sm border border-amber-200/60 my-1">
+                        ${msg.text}
+                    </div>
+                `;
+            } else {
+                let contentHTML = '';
+
+                if (msg.type === 'image') {
+                    contentHTML = `
+                        <div class="rounded-lg overflow-hidden mb-1 max-w-xs">
+                            <img src="${msg.mediaUrl}" class="w-full h-40 object-cover rounded-lg">
+                            <p class="text-xs text-gray-700 mt-1.5 px-0.5">${msg.caption || ''}</p>
+                        </div>
+                    `;
+                } else if (msg.type === 'audio') {
+                    contentHTML = `
+                        <div class="flex items-center space-x-3 py-1 px-1 min-w-[180px]">
+                            <button onclick="playDummyAudio(this)" class="w-8 h-8 rounded-full bg-[#075E54] text-white flex items-center justify-center text-xs shadow active:scale-95 transition">
+                                <i class="fa-solid fa-play ml-0.5"></i>
+                            </button>
+                            <div class="flex-1 flex flex-col justify-center">
+                                <div class="h-1.5 bg-gray-300 rounded-full w-full overflow-hidden">
+                                    <div class="audio-progress bg-[#075E54] h-full w-0 transition-all"></div>
+                                </div>
+                                <span class="text-[10px] text-gray-500 mt-1">0:15 • Áudio de voz</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    contentHTML = `<p class="text-xs sm:text-sm text-gray-800 leading-relaxed">${msg.text}</p>`;
+                }
+
+                wrapper.innerHTML = `
+                    <div class="relative max-w-[82%] sm:max-w-[75%] rounded-lg px-2.5 py-1.5 shadow-sm ${isUser ? 'bg-[#dcf8c6] bubble-out rounded-tr-none' : 'bg-white bubble-in rounded-tl-none'}">
+                        ${contentHTML}
+                        <div class="flex items-center justify-end space-x-1 mt-0.5">
+                            <span class="text-[9px] text-gray-400 font-normal">${timeStr}</span>
+                            ${isUser ? '<i class="fa-solid fa-check-double text-[10px] text-sky-500"></i>' : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            chat.appendChild(wrapper);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        // ATIVA/DESATIVA INDICADOR DE DIGITANDO
+        function setTyping(isTyping) {
+            const ind = document.getElementById('typing-indicator');
+            const status = document.getElementById('header-status');
+            if (isTyping) {
+                ind.classList.remove('hidden');
+                status.innerText = 'digitando...';
+            } else {
+                ind.classList.add('hidden');
+                status.innerText = 'online';
+            }
+            const chat = document.getElementById('chat-messages');
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        // RENDERIZA BOTÕES DE ESCOLHA
+        function renderChoices(choices) {
+            const container = document.getElementById('choices-container');
+            const list = document.getElementById('choices-list');
+            container.style.display = 'flex';
+            list.innerHTML = '';
+
+            choices.forEach((c) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left bg-white hover:bg-emerald-50 border border-gray-200 text-gray-800 text-xs sm:text-sm px-3.5 py-2.5 rounded-xl shadow-sm transition flex items-center justify-between group active:scale-98";
+                btn.innerHTML = `
+                    <span class="font-medium">${c.text}</span>
+                    <i class="fa-solid fa-paper-plane text-gray-300 group-hover:text-[#075E54] transition text-xs"></i>
+                `;
+                btn.onclick = () => selectChoice(c);
+                list.appendChild(btn);
+            });
+        }
+
+        // PROCESSA ESCOLHA DO JOGADOR
+        function selectChoice(choice) {
+            // Atualiza amor
+            state.love = Math.max(0, Math.min(100, state.love + choice.loveDelta));
+            updateLoveUI();
+
+            // Se a escolha disparar chamada de vídeo
+            if (choice.triggerCall) {
+                startVideoCall(() => {
+                    renderStep(choice.next);
+                });
+            } else {
+                setTimeout(() => {
+                    renderStep(choice.next);
+                }, 300);
+            }
+        }
+
+        // EFEITO DE PLAY EM ÁUDIO SIMULADO
+        function playDummyAudio(btn) {
+            const icon = btn.querySelector('i');
+            const bar = btn.parentElement.querySelector('.audio-progress');
+
+            if (icon.classList.contains('fa-play')) {
+                icon.className = 'fa-solid fa-pause';
+                bar.style.width = '100%';
+                bar.style.transition = 'width 15s linear';
+                setTimeout(() => {
+                    icon.className = 'fa-solid fa-play';
+                    bar.style.transition = 'none';
+                    bar.style.width = '0%';
+                }, 15000);
+            } else {
+                icon.className = 'fa-solid fa-play';
+                bar.style.transition = 'none';
+                bar.style.width = '0%';
+            }
+        }
+
+        // LÓGICA DA CHAMADA DE VÍDEO / ÁUDIO
+        let callTimer = null;
+        let callSeconds = 0;
+        let callCallback = null;
+
+        function startVideoCall(callback) {
+            callCallback = callback;
+            const p = PARTNERS[state.partnerKey];
+
+            document.getElementById('call-type-label').innerText = "Chamada de Vídeo WhatsApp";
+            document.getElementById('call-partner-name').innerText = p.name;
+            document.getElementById('call-avatar-img').src = p.callAvatar;
+            document.getElementById('call-subtitles').innerText = `"Que bom te ver! Que saudade de olhar nos seus olhos..."`;
+
+            document.getElementById('call-modal').classList.remove('hidden');
+
+            callSeconds = 0;
+            const timerEl = document.getElementById('call-status-timer');
+            timerEl.innerText = "Conectando...";
+
+            setTimeout(() => {
+                callTimer = setInterval(() => {
+                    callSeconds++;
+                    const m = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+                    const s = String(callSeconds % 60).padStart(2, '0');
+                    timerEl.innerText = `${m}:${s}`;
+                }, 1000);
+            }, 1500);
+        }
+
+        function startAudioCall() {
+            startVideoCall(null);
+            document.getElementById('call-type-label').innerText = "Chamada de Voz WhatsApp";
+        }
+
+        function endCall() {
+            if (callTimer) clearInterval(callTimer);
+            document.getElementById('call-modal').classList.add('hidden');
+            if (callCallback) {
+                callCallback();
+                callCallback = null;
+            }
+        }
+
+        function toggleCallMute() {
+            const btn = document.getElementById('mute-btn');
+            btn.classList.toggle('bg-rose-600');
+        }
+
+        function toggleCallCam() {
+            const btn = document.getElementById('cam-btn');
+            btn.classList.toggle('bg-rose-600');
+        }
+
+        // VERIFICA E EXIBE FINAL BASEADO NO NÍVEL DE AMOR
+        function triggerFinalEnding() {
+            let endingKey = 'perfect';
+
+            if (state.love >= 75) {
+                endingKey = 'perfect';
+            } else if (state.love >= 40) {
+                endingKey = 'friends';
+            } else {
+                endingKey = 'breakup';
+            }
+
+            const end = ENDINGS[endingKey];
+
+            document.getElementById('ending-title').innerText = end.title;
+            document.getElementById('ending-desc').innerText = end.desc;
+            document.getElementById('ending-love-score').innerText = `${state.love}%`;
+            document.getElementById('ending-status').innerText = end.status;
+
+            const badge = document.getElementById('ending-badge');
+            badge.className = `w-20 h-20 rounded-full ${end.bg} flex items-center justify-center text-4xl shadow-inner`;
+            document.getElementById('ending-icon').className = `${end.icon} ${end.color}`;
+
+            document.getElementById('ending-modal').classList.remove('hidden');
+        }
+
+        function restartGame() {
+            document.getElementById('ending-modal').classList.add('hidden');
+            document.getElementById('character-select-screen').classList.remove('hidden');
+        }
+
+        function toggleLoveMeter() {
+            const meter = document.getElementById('love-meter-bar');
+            meter.classList.toggle('hidden');
+        }
+    </script>
+</body>
+</html>
